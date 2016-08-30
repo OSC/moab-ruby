@@ -25,7 +25,34 @@ $ gem install moab
 
 ## Usage
 
-TODO: Write usage instructions here
+This gem provides a simple interface to the Moab binaries returning the results
+in XML format. You first need to define a scheduler server:
+
+```ruby
+require 'moab'
+
+# Define a scheduler server using the default environment
+oakley = Moab::Scheduler.new(host: 'oak-batch.osc.edu')
+
+# Define a scheduler server with custom environment
+oakley = Moab::Scheduler.new(
+  host: 'oak-batch.osc.edu',
+  lib: '/opt/moab/lib',
+  bin: '/opt/moab/bin',
+  moabhomedir: '/var/spool/moab'
+)
+```
+
+You can now call any Moab binaries for this given scheduler server:
+
+```ruby
+# Get all reservations
+xml = oakley.call('mrsvctl', '-q', 'ALL')
+#=> #(Document:...)
+
+# Parse the given XML using Nokogiri methods
+xml.xpath("//rsv").map { |x| x.xpath("@Name").to_s }
+```
 
 ## Contributing
 
