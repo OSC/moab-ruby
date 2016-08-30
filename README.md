@@ -46,12 +46,13 @@ oakley = Moab::Scheduler.new(
 You can now call any Moab binaries for this given scheduler server:
 
 ```ruby
-# Get all reservations
-xml = oakley.call('mrsvctl', '-q', 'ALL')
-#=> #(Document:...)
+# Call `mrsvctl` for this Moab server
+oakley.call("mrsvctl", "-q", "ALL").xpath("//rsv/@Name").first.value
+#=> "my_rsv.832749"
 
-# Parse the given XML using Nokogiri methods
-xml.xpath("//rsv").map { |x| x.xpath("@Name").to_s }
+# Call `showq` for this Moab server
+oakley.call("showq").xpath('//queue[@option="active"]/@count').first.value.to_i
+#=> 639
 ```
 
 ## Contributing
