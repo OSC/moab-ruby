@@ -13,30 +13,30 @@ module Moab
     # The path to the Moab client installation libraries
     # @example For Moab 9.0.0
     #   my_conn.lib.to_s #=> "/usr/local/moab/9.0.0/lib"
-    # @return [Pathname, nil] path to moab libraries
+    # @return [Pathname] path to moab libraries
     attr_reader :lib
 
     # The path to the Moab client installation binaries
     # @example For Moab 9.0.0
     #   my_conn.bin.to_s #=> "/usr/local/moab/9.0.0/bin"
-    # @return [Pathname, nil] path to moab binaries
+    # @return [Pathname] path to moab binaries
     attr_reader :bin
 
     # The path to the Moab home dir
     # @example
     #   my_conn.moabhomedir.to_s #=> "/var/spool/batch/moab"
-    # @return [Pathname, nil] path to moab home dir
+    # @return [Pathname] path to moab home dir
     attr_reader :moabhomedir
 
     # @param host [#to_s] the moab scheduler server
-    # @param lib [#to_s, nil] path to moab installation libraries
-    # @param bin [#to_s, nil] path to moab installation binaries
-    # @param moabhomedir [#to_s, nil] path to moab home dir
-    def initialize(host:, lib: nil, bin: nil, moabhomedir: nil)
+    # @param lib [#to_s] path to moab installation libraries
+    # @param bin [#to_s] path to moab installation binaries
+    # @param moabhomedir [#to_s] path to moab home dir
+    def initialize(host:, lib: "", bin: "", moabhomedir: ENV['MOABHOMEDIR'])
       @host        = host.to_s
-      @lib         = Pathname.new(lib.to_s) if lib
-      @bin         = Pathname.new(bin.to_s) if bin
-      @moabhomedir = Pathname.new(moabhomedir.to_s) if moabhomedir
+      @lib         = Pathname.new(lib.to_s)
+      @bin         = Pathname.new(bin.to_s)
+      @moabhomedir = Pathname.new(moabhomedir.to_s)
     end
 
     # Convert object to hash
@@ -67,19 +67,19 @@ module Moab
 
     # Call a binary command from the moab client installation
     # @param cmd [#to_s] command run from command line
-    # @param args [Array<#to_s>] arguments for command
+    # @param *args [Array<#to_s>] any number of arguments for command
     # @param env [#to_h] environment to run command under
-    # @return [Nokogiri::XML] the xml output from command
+    # @return [Nokogiri::Document] the xml output from command
     # @raise [CommandFailed] if command exits with nonzero exit code
     # @raise [InvalidCommand] if command does not exist
     def call(cmd, *args, env: {})
-      _cmd = bin ? bin.join(cmd.to_s).to_s : cmd.to_s
-      _args = ["--host=#{@host}", "--xml"] + args.map(&:to_s)
-      _env = {}
-      _env.merge!("LD_LIBRARY_PATH" => "#{lib}:#{ENV['LD_LIBRARY_PATH']}") if lib
-      _env.merge!("MOABHOMEDIR"     => "#{moabhomedir}")                   if moabhomedir
-      _env.merge!(env.to_h)
-      o, e, s = Open3.capture3(_env, _cmd, *_args)
+      cmd = bin.join(cmd.to_s).to_s
+      args = ["--host=#{@host}", "--xml"] + args.map(&:to_s)
+      env = {
+        "LD_LIBRARY_PATH" => "#{lib}:#{ENV['LD_LIBRARY_PATH']}",
+        "MOABHOMEDIR" => "#{moabhomedir}"
+      }.merge(env.to_h)
+      o, e, s = Open3.capture3(env, cmd, *args)
       s.success? ? Nokogiri::XML(o) : raise(CommandFailed, e)
     rescue Errno::ENOENT => e
       raise InvalidCommand, e.message
